@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminProductController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PhoneVerificationController;
@@ -21,3 +22,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::post('/phone/resend', [PhoneVerificationController::class, 'resend'])
     ->middleware('throttle:otp');
+
+Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
+    Route::apiResource('products', AdminProductController::class);
+});
