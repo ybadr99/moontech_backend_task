@@ -10,7 +10,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'phone', 'password', 'phone_verified_at'])]
+#[Fillable(['name', 'phone', 'password', 'phone_verified_at', 'role'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -22,7 +22,13 @@ class User extends Authenticatable
         return [
             'password' => 'hashed',
             'phone_verified_at' => 'datetime',
+            'role' => 'string',
         ];
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
     }
 
     public function isPhoneVerified(): bool
