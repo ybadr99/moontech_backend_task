@@ -8,7 +8,6 @@ use App\Models\PhoneVerification;
 use App\Models\User;
 use App\Notifications\PhoneVerificationOtp;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class PhoneVerificationController extends Controller
