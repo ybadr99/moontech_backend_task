@@ -14,8 +14,8 @@ class DatabaseSeeder extends Seeder
     {
         User::factory()->create([
             'name' => 'Admin User',
-            'phone' => '01234567890',
-            'password' => 'password',
+            'phone' => '123123123123',
+            'password' => '123123',
         ]);
     }
 }

@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Resources\UserResource;
+use App\Models\PhoneVerification;
 use App\Models\User;
+use App\Notifications\PhoneVerificationOtp;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -21,6 +23,16 @@ class AuthController extends Controller
         ]);
 
         $token = $user->createToken('auth-token')->plainTextToken;
+
+        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        PhoneVerification::create([
+            'user_id' => $user->id,
+            'otp' => Hash::make($otp),
+            'expires_at' => now()->addMinutes(5),
+        ]);
+
+        $user->notify(new PhoneVerificationOtp($otp));
 
         return response()->json([
             'message' => 'User registered successfully',
