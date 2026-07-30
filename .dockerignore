@@ -1,0 +1,15 @@
+.git
+.gitignore
+.gitattributes
+.env
+.vagrant
+node_modules
+vendor
+storage
+bootstrap/cache
+docker-compose.yml
+compose.yaml
+.phpunit.result.cache
+.idea
+.vscode
+*.md

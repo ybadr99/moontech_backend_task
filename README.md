@@ -1,58 +1,109 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Moontech Backend Task
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Laravel REST API backend with order management and admin capabilities.
 
-## About Laravel
+## Prerequisites
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- [Docker](https://docs.docker.com/get-docker/) (with Compose plugin)
+- [Git](https://git-scm.com/)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Quick Start
 
 ```bash
-composer require laravel/boost --dev
+# 1. Clone & enter the project
+git clone <repo-url> moontech-backend-task
+cd moontech-backend-task
 
-php artisan boost:install
+# 2. Copy environment file
+cp .env.example .env
+
+# 3. Start containers (builds images, starts MySQL, app, queue worker, nginx)
+docker compose up -d
+
+# 4. Install PHP dependencies
+docker compose exec app composer install
+
+# 5. Generate app key
+docker compose exec app php artisan key:generate
+
+# 6. Run database migrations & seeders
+docker compose exec app php artisan migrate --seed
+
+# 7. Done! The API is available at:
+#    http://localhost:8080
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## Services
 
-## Contributing
+| Service        | Container        | Description                        |
+|----------------|------------------|------------------------------------|
+| **Nginx**      | `moontech-nginx` | Web server (port 8080)             |
+| **PHP-FPM**    | `moontech-app`   | PHP application server             |
+| **MySQL**      | `moontech-mysql` | Database (host port 3307)          |
+| **Queue**      | `moontech-queue` | Queue worker for async jobs        |
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Useful Commands
 
-## Code of Conduct
+```bash
+# View running containers
+docker compose ps
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+# Follow logs
+docker compose logs -f
 
-## Security Vulnerabilities
+# Run artisan commands
+docker compose exec app php artisan <command>
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+# Run tests
+docker compose exec app php artisan test
 
-## License
+# Run a specific test
+docker compose exec app php artisan test --filter=OrderStatusTest
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# Access MySQL CLI
+docker compose exec mysql mysql -u laravel -p laravel
+
+# Stop containers
+docker compose down
+
+# Stop and remove volumes (wipes database)
+docker compose down -v
+
+# Rebuild images after Dockerfile changes
+docker compose build
+```
+
+## API Endpoints
+
+### Authentication
+
+| Method | Endpoint             | Description         |
+|--------|----------------------|---------------------|
+| POST   | `/api/register`      | Register a new user |
+| POST   | `/api/login`         | Login               |
+| POST   | `/api/logout`        | Logout              |
+
+### Orders
+
+| Method | Endpoint                     | Description              |
+|--------|------------------------------|--------------------------|
+| GET    | `/api/orders`                | List user's orders       |
+| POST   | `/api/orders`                | Create an order          |
+| PATCH  | `/api/admin/orders/{id}/status` | Update order status (admin) |
+
+### Admin
+
+| Method | Endpoint                | Description            |
+|--------|-------------------------|------------------------|
+| GET    | `/api/admin/orders`     | List all orders        |
+| GET    | `/api/admin/products`   | List all products      |
+| POST   | `/api/admin/products`   | Create a product       |
+| PUT    | `/api/admin/products/{id}` | Update a product    |
+| DELETE | `/api/admin/products/{id}` | Delete a product    |
+
+## Seeded Credentials
+
+| Role  | Phone          | Password   |
+|-------|----------------|------------|
+| Admin | 123123123123   | password   |
+| User  | 01001234567    | password   |
