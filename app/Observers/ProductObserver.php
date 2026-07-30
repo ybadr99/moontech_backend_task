@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Events\ProductBackInStock;
 use App\Models\Product;
 use App\Models\User;
 use App\Notifications\NewProductNotification;
@@ -16,5 +17,12 @@ class ProductObserver
                     $user->notify(new NewProductNotification($product));
                 }
             });
+    }
+
+    public function updated(Product $product): void
+    {
+        if ($product->isDirty('stock') && $product->stock > 0 && (int) $product->getOriginal('stock') === 0) {
+            ProductBackInStock::dispatch($product);
+        }
     }
 }

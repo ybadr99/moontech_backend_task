@@ -7,6 +7,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PhoneVerificationController;
+use App\Http\Controllers\StockSubscriptionController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -25,6 +26,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/orders', [OrderController::class, 'store']);
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read']);
+    Route::post('/products/{product}/notify-me', [StockSubscriptionController::class, 'store']);
 });
 
 Route::post('/phone/resend', [PhoneVerificationController::class, 'resend'])
