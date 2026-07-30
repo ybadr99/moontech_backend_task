@@ -6,6 +6,7 @@ use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\User;
 use App\Notifications\OrderStatusChanged;
+use App\Notifications\OrderStatusChangedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -233,7 +234,7 @@ class OrderStatusTest extends TestCase
 
         Notification::assertSentTo(
             $order->user,
-            OrderStatusChanged::class,
+            OrderStatusChangedNotification::class,
         );
 
         $this->withHeader('Authorization', "Bearer $token")
@@ -243,8 +244,59 @@ class OrderStatusTest extends TestCase
 
         Notification::assertSentToTimes(
             $order->user,
-            OrderStatusChanged::class,
+            OrderStatusChangedNotification::class,
             1,
+        );
+    }
+
+    public function test_admin_who_performs_change_does_not_receive_notification(): void
+    {
+        Notification::fake();
+
+        $admin = User::factory()->admin()->create();
+        $token = $admin->createToken('admin-token')->plainTextToken;
+        $order = Order::factory()->create(['status' => 'pending']);
+
+        $this->withHeader('Authorization', "Bearer $token")
+            ->patchJson("/api/admin/orders/{$order->id}/status", [
+                'status' => 'confirmed',
+            ]);
+
+        Notification::assertSentTo($order->user, OrderStatusChangedNotification::class);
+        Notification::assertNotSentTo($admin, OrderStatusChangedNotification::class);
+    }
+
+    public function test_updating_non_status_field_does_not_trigger_notification(): void
+    {
+        Notification::fake();
+
+        $token = $this->adminToken();
+        $order = Order::factory()->create(['status' => 'pending']);
+
+        $order->update(['total' => 999.99]);
+
+        Notification::assertNothingSent();
+    }
+
+    public function test_notification_data_contains_correct_status_values(): void
+    {
+        Notification::fake();
+
+        $token = $this->adminToken();
+        $order = Order::factory()->create(['status' => 'pending']);
+
+        $this->withHeader('Authorization', "Bearer $token")
+            ->patchJson("/api/admin/orders/{$order->id}/status", [
+                'status' => 'confirmed',
+            ]);
+
+        Notification::assertSentTo(
+            $order->user,
+            OrderStatusChangedNotification::class,
+            function (OrderStatusChangedNotification $notification) {
+                return $notification->previousStatus === 'pending'
+                    && $notification->order->status->value === 'confirmed';
+            },
         );
     }
 

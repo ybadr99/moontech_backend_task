@@ -8,7 +8,6 @@ use App\Http\Requests\UpdateOrderStatusRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
-use App\Notifications\OrderStatusChanged;
 use App\Services\OrderStatusService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -73,12 +72,6 @@ class AdminOrderController extends Controller
         });
 
         $order->refresh();
-
-        $order->user->notify(new OrderStatusChanged(
-            $order->id,
-            $previousStatus,
-            $newStatus->value,
-        ));
 
         return response()->json([
             'message' => 'Order status updated successfully.',
