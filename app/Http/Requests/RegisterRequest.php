@@ -15,7 +15,7 @@ class RegisterRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'phone' => ['required', 'string', 'max:20', 'unique:users,phone'],
+            'phone' => 'required|regex:/^01[0-9]{9}$/|unique:users,phone',
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ];
     }

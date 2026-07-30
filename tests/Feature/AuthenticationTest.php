@@ -19,7 +19,7 @@ class AuthenticationTest extends TestCase
 
         $response = $this->postJson('/api/register', [
             'name' => 'John Doe',
-            'phone' => '1234567890',
+            'phone' => '01012345678',
             'password' => 'password123',
             'password_confirmation' => 'password123',
         ]);
@@ -31,7 +31,7 @@ class AuthenticationTest extends TestCase
             ]);
 
         $this->assertDatabaseHas('users', [
-            'phone' => '1234567890',
+            'phone' => '01012345678',
             'role' => 'user',
         ]);
     }
@@ -104,7 +104,7 @@ class AuthenticationTest extends TestCase
 
         $response = $this->postJson('/api/register', [
             'name' => 'Token User',
-            'phone' => '9999999999',
+            'phone' => '01012345678',
             'password' => 'password123',
             'password_confirmation' => 'password123',
         ]);
@@ -129,7 +129,8 @@ class AuthenticationTest extends TestCase
     {
         $response = $this->getJson('/api/user');
 
-        $response->assertStatus(401);
+        $response->assertStatus(401)
+            ->assertExactJson(['message' => 'Unauthenticated.']);
     }
 
     public function test_phone_verification_succeeds_with_valid_code(): void
@@ -230,5 +231,58 @@ class AuthenticationTest extends TestCase
         $response->assertStatus(200);
 
         $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    public static function validPhoneProvider(): array
+    {
+        return [
+            '010 prefix' => ['01012345678'],
+            '011 prefix' => ['01112345678'],
+            '012 prefix' => ['01212345678'],
+            '015 prefix' => ['01512345678'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('validPhoneProvider')]
+    public function test_valid_phone_formats_are_accepted(string $phone): void
+    {
+        Notification::fake();
+
+        $response = $this->postJson('/api/register', [
+            'name' => 'John Doe',
+            'phone' => $phone,
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $response->assertStatus(201);
+    }
+
+    public static function invalidPhoneProvider(): array
+    {
+        return [
+            'does not start with 01' => ['12345678901'],
+            'starts with 02' => ['02123456789'],
+            'less than 9 digits after 01' => ['01123456'],
+            'too short' => ['010123456'],
+            'too long' => ['010123456789'],
+            'non numeric' => ['010abcdefgh'],
+            'mixed chars' => ['0101234abcd'],
+            'special chars' => ['010-123-678'],
+            'empty string' => [''],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidPhoneProvider')]
+    public function test_invalid_phone_formats_are_rejected(string $phone): void
+    {
+        $response = $this->postJson('/api/register', [
+            'name' => 'John Doe',
+            'phone' => $phone,
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $response->assertStatus(422);
     }
 }
