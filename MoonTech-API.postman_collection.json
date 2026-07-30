@@ -1,0 +1,888 @@
+{
+  "info": {
+    "name": "MoonTech API",
+    "description": "Complete API documentation for the MoonTech e-commerce backend.\n\n## Authentication\n- Register with name, phone (Egyptian format `01xxxxxxxxx`), and password.\n- Verify phone via OTP sent on registration.\n- Login returns a Bearer token stored as `{{token}}`.\n- Protected endpoints require `Authorization: Bearer {{token}}`.\n\n## Roles\n- **user** — create orders, view own orders, subscribe to back-in-stock, manage notifications.\n- **admin** — manage products (`/api/admin/products`), list all orders (`/api/admin/orders`), update order statuses.\n\n## Transitions (Order Status)\n- `pending` → `confirmed`, `cancelled`\n- `confirmed` → `processing`, `cancelled`\n- `processing` → `shipped`, `cancelled`\n- `shipped` → `delivered`\n- `delivered`, `cancelled` → (terminal — no further changes)\n\n## Environment Variables\n| Variable | Description |\n|---|---|\n| `{{base_url}}` | API base URL (e.g. `http://localhost:8080/api`) |\n| `{{token}}` | Bearer token from login/register |\n| `{{product_id}}` | Product ID from create/list responses |\n| `{{order_id}}` | Order ID from create/list responses |\n| `{{notification_id}}` | Notification ID from list response |",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080/api" },
+    { "key": "token", "value": "" },
+    { "key": "product_id", "value": "" },
+    { "key": "order_id", "value": "" },
+    { "key": "notification_id", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{token}}", "type": "string" }
+    ]
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "description": "Endpoints for registration, phone verification, login/logout, password reset, and fetching the authenticated user.",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Ahmed Ali\",\n    \"phone\": \"01012345678\",\n    \"password\": \"password123\",\n    \"password_confirmation\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/register",
+              "host": ["{{base_url}}"],
+              "path": ["register"]
+            },
+            "description": "Register a new user. Phone must match the Egyptian pattern `01xxxxxxxxx`. An OTP is sent via notification for phone verification."
+          },
+          "response": [
+            {
+              "name": "Success (201)",
+              "status": "Created",
+              "code": 201,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"User registered successfully\",\n    \"data\": {\n        \"user\": {\n            \"id\": 1,\n            \"name\": \"Ahmed Ali\",\n            \"phone\": \"01012345678\",\n            \"role\": \"user\",\n            \"created_at\": \"2026-07-30T10:00:00.000000Z\"\n        },\n        \"token\": \"1|abcdefghijklmnopqrstuvwxyz0123456789abcdef\"\n    }\n}"
+            },
+            {
+              "name": "Validation Error (422)",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"The phone field format is invalid. (and 1 more error)\",\n    \"errors\": {\n        \"phone\": [\n            \"The phone field format is invalid.\"\n        ],\n        \"password\": [\n            \"The password field confirmation does not match.\"\n        ]\n    }\n}"
+            },
+            {
+              "name": "Duplicate Phone (422)",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"The phone has already been taken.\",\n    \"errors\": {\n        \"phone\": [\n            \"The phone has already been taken.\"\n        ]\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"phone\": \"01012345678\",\n    \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": ["{{base_url}}"],
+              "path": ["login"]
+            },
+            "description": "Login with phone and password. Returns a Bearer token (store as `{{token}}`)."
+          },
+          "response": [
+            {
+              "name": "Success (200)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Login successful\",\n    \"data\": {\n        \"user\": {\n            \"id\": 1,\n            \"name\": \"Ahmed Ali\",\n            \"phone\": \"01012345678\",\n            \"role\": \"user\",\n            \"created_at\": \"2026-07-30T10:00:00.000000Z\"\n        },\n        \"token\": \"1|abcdefghijklmnopqrstuvwxyz0123456789abcdef\"\n    }\n}"
+            },
+            {
+              "name": "Invalid Credentials (401)",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Invalid credentials\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Authenticated User",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/user",
+              "host": ["{{base_url}}"],
+              "path": ["user"]
+            },
+            "description": "Fetch the currently authenticated user's profile."
+          },
+          "response": [
+            {
+              "name": "Success (200)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"data\": {\n        \"id\": 1,\n        \"name\": \"Ahmed Ali\",\n        \"phone\": \"01012345678\",\n        \"role\": \"user\",\n        \"created_at\": \"2026-07-30T10:00:00.000000Z\"\n    }\n}"
+            },
+            {
+              "name": "Unauthenticated (401)",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Unauthenticated.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/logout",
+              "host": ["{{base_url}}"],
+              "path": ["logout"]
+            },
+            "description": "Revoke the current access token."
+          },
+          "response": [
+            {
+              "name": "Success (200)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Logged out successfully\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Verify Phone",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/phone/verify",
+              "host": ["{{base_url}}"],
+              "path": ["phone", "verify"]
+            },
+            "description": "Verify the phone number with the OTP received during registration."
+          },
+          "response": [
+            {
+              "name": "Success (200)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Phone number verified successfully.\"\n}"
+            },
+            {
+              "name": "Invalid OTP (422)",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Invalid OTP.\"\n}"
+            },
+            {
+              "name": "Expired OTP (410)",
+              "status": "Gone",
+              "code": 410,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"OTP has expired. Request a new one.\"\n}"
+            },
+            {
+              "name": "Already Verified (422)",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Phone number is already verified.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Resend Phone OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"phone\": \"01012345678\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/phone/resend",
+              "host": ["{{base_url}}"],
+              "path": ["phone", "resend"]
+            },
+            "description": "Resend the phone verification OTP. Rate-limited to 1 request per minute."
+          },
+          "response": [
+            {
+              "name": "Success (200)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"A new OTP has been sent to your phone.\"\n}"
+            },
+            {
+              "name": "Account Not Found (404)",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"No account found with this phone number.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"phone\": \"01012345678\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/forgot-password",
+              "host": ["{{base_url}}"],
+              "path": ["forgot-password"]
+            },
+            "description": "Request a password reset OTP. Rate-limited to 1 request per minute."
+          },
+          "response": [
+            {
+              "name": "Success (200)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"OTP sent to your phone.\"\n}"
+            },
+            {
+              "name": "Account Not Found (404)",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"No account found with this phone number.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"phone\": \"01012345678\",\n    \"otp\": \"654321\",\n    \"password\": \"newpassword456\",\n    \"password_confirmation\": \"newpassword456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["reset-password"]
+            },
+            "description": "Reset the password using the OTP received via forgot-password. All existing tokens are revoked on success."
+          },
+          "response": [
+            {
+              "name": "Success (200)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Password reset successfully.\"\n}"
+            },
+            {
+              "name": "Invalid OTP (422)",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Invalid OTP.\"\n}"
+            },
+            {
+              "name": "Expired OTP (410)",
+              "status": "Gone",
+              "code": 410,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"OTP has expired. Request a new one.\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Products (Admin)",
+      "description": "Admin CRUD for products. All endpoints require `auth:sanctum` + `role:admin`.",
+      "item": [
+        {
+          "name": "List Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/products?page=1",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "products"],
+              "query": [
+                { "key": "page", "value": "1" }
+              ]
+            },
+            "description": "Paginated list of all products (20 per page)."
+          },
+          "response": [
+            {
+              "name": "Success (200)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"current_page\": 1,\n    \"data\": [\n        {\n            \"id\": 1,\n            \"title\": \"Wireless Bluetooth Headphones\",\n            \"description\": \"High-quality wireless headphones with noise cancellation.\",\n            \"price\": \"1499.99\",\n            \"stock\": 50,\n            \"image\": \"http://localhost:8080/storage/products/abc123-headphones.jpg\",\n            \"created_at\": \"2026-07-30T10:05:00.000000Z\",\n            \"updated_at\": \"2026-07-30T10:05:00.000000Z\"\n        },\n        {\n            \"id\": 2,\n            \"title\": \"Mechanical Gaming Keyboard\",\n            \"description\": \"RGB mechanical keyboard with Cherry MX Blue switches.\",\n            \"price\": \"2499.99\",\n            \"stock\": 30,\n            \"image\": \"http://localhost:8080/storage/products/def456-keyboard.jpg\",\n            \"created_at\": \"2026-07-30T10:06:00.000000Z\",\n            \"updated_at\": \"2026-07-30T10:06:00.000000Z\"\n        }\n    ],\n    \"from\": 1,\n    \"to\": 2,\n    \"total\": 2,\n    \"per_page\": 20,\n    \"last_page\": 1\n}"
+            },
+            {
+              "name": "Forbidden (403)",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Forbidden.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "title", "value": "Wireless Bluetooth Headphones", "type": "text" },
+                { "key": "description", "value": "High-quality wireless headphones with noise cancellation, 30-hour battery life, and comfortable over-ear design.", "type": "text" },
+                { "key": "price", "value": "1499.99", "type": "text" },
+                { "key": "stock", "value": "50", "type": "text" },
+                { "key": "image", "type": "file", "src": "" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/products",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "products"]
+            },
+            "description": "Create a new product. Image is optional (max 2 MB, types: jpeg/png/jpg/gif/webp)."
+          },
+          "response": [
+            {
+              "name": "Success (201)",
+              "status": "Created",
+              "code": 201,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Product created successfully\",\n    \"data\": {\n        \"id\": 1,\n        \"title\": \"Wireless Bluetooth Headphones\",\n        \"description\": \"High-quality wireless headphones with noise cancellation, 30-hour battery life, and comfortable over-ear design.\",\n        \"price\": \"1499.99\",\n        \"stock\": 50,\n        \"image\": \"http://localhost:8080/storage/products/abc123-headphones.jpg\",\n        \"created_at\": \"2026-07-30T10:05:00.000000Z\",\n        \"updated_at\": \"2026-07-30T10:05:00.000000Z\"\n    }\n}"
+            },
+            {
+              "name": "Validation Error (422)",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"The title field is required. (and 2 more errors)\",\n    \"errors\": {\n        \"title\": [\"The title field is required.\"],\n        \"price\": [\"The price field is required.\"],\n        \"stock\": [\"The stock field is required.\"]\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Product",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/products/{{product_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "products", "{{product_id}}"]
+            },
+            "description": "Show a single product by ID."
+          },
+          "response": [
+            {
+              "name": "Success (200)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"data\": {\n        \"id\": 1,\n        \"title\": \"Wireless Bluetooth Headphones\",\n        \"description\": \"High-quality wireless headphones with noise cancellation, 30-hour battery life, and comfortable over-ear design.\",\n        \"price\": \"1499.99\",\n        \"stock\": 50,\n        \"image\": \"http://localhost:8080/storage/products/abc123-headphones.jpg\",\n        \"created_at\": \"2026-07-30T10:05:00.000000Z\",\n        \"updated_at\": \"2026-07-30T10:05:00.000000Z\"\n    }\n}"
+            },
+            {
+              "name": "Not Found (404)",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Resource not found\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Product",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "title", "value": "Wireless Bluetooth Headphones Pro", "type": "text" },
+                { "key": "price", "value": "1799.99", "type": "text" },
+                { "key": "stock", "value": "75", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/products/{{product_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "products", "{{product_id}}"]
+            },
+            "description": "Update a product. Only send the fields you want to change (partial updates are supported)."
+          },
+          "response": [
+            {
+              "name": "Success (200)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Product updated successfully\",\n    \"data\": {\n        \"id\": 1,\n        \"title\": \"Wireless Bluetooth Headphones Pro\",\n        \"description\": \"High-quality wireless headphones with noise cancellation, 30-hour battery life, and comfortable over-ear design.\",\n        \"price\": \"1799.99\",\n        \"stock\": 75,\n        \"image\": \"http://localhost:8080/storage/products/abc123-headphones.jpg\",\n        \"created_at\": \"2026-07-30T10:05:00.000000Z\",\n        \"updated_at\": \"2026-07-30T10:08:00.000000Z\"\n    }\n}"
+            },
+            {
+              "name": "Validation Error (422)",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"The price must be at least 0.\",\n    \"errors\": {\n        \"price\": [\"The price must be at least 0.\"]\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Product",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/products/{{product_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "products", "{{product_id}}"]
+            },
+            "description": "Delete a product. The associated image file is also removed from storage."
+          },
+          "response": [
+            {
+              "name": "Success (200)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Product deleted successfully\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Stock Subscription",
+      "description": "Allow authenticated users to subscribe for back-in-stock notifications on out-of-stock products.",
+      "item": [
+        {
+          "name": "Subscribe (Notify Me)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/products/{{product_id}}/notify-me",
+              "host": ["{{base_url}}"],
+              "path": ["products", "{{product_id}}", "notify-me"]
+            },
+            "description": "Subscribe the authenticated user to be notified when a product is back in stock. Rejected with 422 if the product is currently in stock. Idempotent — subscribing twice returns a success message without creating a duplicate."
+          },
+          "response": [
+            {
+              "name": "Subscribed (200)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"You will be notified when this product is back in stock.\"\n}"
+            },
+            {
+              "name": "Already Subscribed (200)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"You are already subscribed to this product.\"\n}"
+            },
+            {
+              "name": "Product In Stock (422)",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Product is already in stock.\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Orders (User)",
+      "description": "Endpoints for authenticated users to create and view their own orders.",
+      "item": [
+        {
+          "name": "List My Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders?page=1",
+              "host": ["{{base_url}}"],
+              "path": ["orders"],
+              "query": [
+                { "key": "page", "value": "1" }
+              ]
+            },
+            "description": "Paginated list of the authenticated user's orders (20 per page)."
+          },
+          "response": [
+            {
+              "name": "Success (200)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"data\": [\n        {\n            \"id\": 1,\n            \"status\": \"pending\",\n            \"total\": 4499.97,\n            \"items\": [\n                {\n                    \"id\": 1,\n                    \"product_id\": 1,\n                    \"product_title\": \"Wireless Bluetooth Headphones\",\n                    \"quantity\": 2,\n                    \"price\": 1499.99,\n                    \"subtotal\": 2999.98\n                },\n                {\n                    \"id\": 2,\n                    \"product_id\": 2,\n                    \"product_title\": \"Mechanical Gaming Keyboard\",\n                    \"quantity\": 1,\n                    \"price\": 1499.99,\n                    \"subtotal\": 1499.99\n                }\n            ],\n            \"created_at\": \"2026-07-30T11:00:00.000000Z\",\n            \"updated_at\": \"2026-07-30T11:00:00.000000Z\"\n        }\n    ],\n    \"meta\": {\n        \"current_page\": 1,\n        \"from\": 1,\n        \"to\": 1,\n        \"total\": 1,\n        \"per_page\": 20,\n        \"last_page\": 1\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"items\": [\n        {\n            \"product_id\": 1,\n            \"quantity\": 2\n        },\n        {\n            \"product_id\": 2,\n            \"quantity\": 1\n        }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders",
+              "host": ["{{base_url}}"],
+              "path": ["orders"]
+            },
+            "description": "Create a new order. Items must be an array with at least one entry. Duplicate products in the same order are rejected. Stock is validated and deducted atomically inside a database transaction with `FOR UPDATE` locking."
+          },
+          "response": [
+            {
+              "name": "Success (201)",
+              "status": "Created",
+              "code": 201,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Order created successfully\",\n    \"data\": {\n        \"id\": 1,\n        \"items\": [\n            {\n                \"product_id\": 1,\n                \"product_title\": \"Wireless Bluetooth Headphones\",\n                \"quantity\": 2,\n                \"price\": 1499.99,\n                \"subtotal\": 2999.98\n            },\n            {\n                \"product_id\": 2,\n                \"product_title\": \"Mechanical Gaming Keyboard\",\n                \"quantity\": 1,\n                \"price\": 1499.99,\n                \"subtotal\": 1499.99\n            }\n        ],\n        \"total\": 4499.97,\n        \"status\": \"pending\",\n        \"created_at\": \"2026-07-30T11:00:00.000000Z\"\n    }\n}"
+            },
+            {
+              "name": "Validation Error (422)",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"The items field is required.\",\n    \"errors\": {\n        \"items\": [\"The items field is required.\"]\n    }\n}"
+            },
+            {
+              "name": "Duplicate Products (422)",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Duplicate products are not allowed in the same order.\",\n    \"errors\": {\n        \"items\": [\"Duplicate products are not allowed in the same order.\"]\n    }\n}"
+            },
+            {
+              "name": "Insufficient Stock (409)",
+              "status": "Conflict",
+              "code": 409,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Wireless Bluetooth Headphones\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Orders (Admin)",
+      "description": "Admin endpoints for managing orders: list all orders and update order statuses. Requires `role:admin`.",
+      "item": [
+        {
+          "name": "List All Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/orders?page=1",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "orders"],
+              "query": [
+                { "key": "page", "value": "1" }
+              ]
+            },
+            "description": "Paginated list of every order, including the associated user. Admin-only."
+          },
+          "response": [
+            {
+              "name": "Success (200)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"data\": [\n        {\n            \"id\": 1,\n            \"status\": \"pending\",\n            \"total\": 4499.97,\n            \"items\": [\n                {\n                    \"id\": 1,\n                    \"product_id\": 1,\n                    \"product_title\": \"Wireless Bluetooth Headphones\",\n                    \"quantity\": 2,\n                    \"price\": 1499.99,\n                    \"subtotal\": 2999.98\n                }\n            ],\n            \"user\": {\n                \"id\": 1,\n                \"name\": \"Ahmed Ali\",\n                \"phone\": \"01012345678\",\n                \"role\": \"user\",\n                \"created_at\": \"2026-07-30T10:00:00.000000Z\"\n            },\n            \"created_at\": \"2026-07-30T11:00:00.000000Z\",\n            \"updated_at\": \"2026-07-30T11:00:00.000000Z\"\n        }\n    ],\n    \"meta\": {\n        \"current_page\": 1,\n        \"from\": 1,\n        \"to\": 1,\n        \"total\": 1,\n        \"per_page\": 20,\n        \"last_page\": 1\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Order Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"confirmed\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/orders/{{order_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "orders", "{{order_id}}", "status"]
+            },
+            "description": "Update an order's status. Valid transitions: pending→confirmed|cancelled, confirmed→processing|cancelled, processing→shipped|cancelled, shipped→delivered. Delivered and cancelled are terminal."
+          },
+          "response": [
+            {
+              "name": "Success (200)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Order status updated successfully.\",\n    \"data\": {\n        \"id\": 1,\n        \"current_status\": \"confirmed\",\n        \"previous_status\": \"pending\",\n        \"updated_at\": \"2026-07-30T11:15:00.000000Z\",\n        \"status_history\": [\n            {\n                \"previous_status\": \"pending\",\n                \"new_status\": \"confirmed\",\n                \"changed_by\": 2,\n                \"changed_at\": \"2026-07-30T11:15:00.000000Z\"\n            }\n        ]\n    }\n}"
+            },
+            {
+              "name": "Same Status (200)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Order status is already set to confirmed.\",\n    \"data\": {\n        \"id\": 1,\n        \"current_status\": \"confirmed\",\n        \"previous_status\": \"confirmed\",\n        \"updated_at\": \"2026-07-30T11:00:00.000000Z\"\n    }\n}"
+            },
+            {
+              "name": "Invalid Transition (422)",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Invalid status transition from 'shipped' to 'pending'.\"\n}"
+            },
+            {
+              "name": "Terminal Status (422)",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Cannot change status of a delivered order.\"\n}"
+            },
+            {
+              "name": "Invalid Enum Value (422)",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"The selected status is invalid.\",\n    \"errors\": {\n        \"status\": [\"The selected status is invalid.\"]\n    }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "description": "Endpoints for authenticated users to view and manage their database notifications.",
+      "item": [
+        {
+          "name": "List Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/notifications?page=1",
+              "host": ["{{base_url}}"],
+              "path": ["notifications"],
+              "query": [
+                { "key": "page", "value": "1" }
+              ]
+            },
+            "description": "Paginated list of the authenticated user's database notifications, most recent first."
+          },
+          "response": [
+            {
+              "name": "Success (200)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"data\": [\n        {\n            \"id\": \"b1f2e3d4-5a6b-7c8d-9e0f-1a2b3c4d5e6f\",\n            \"type\": \"App\\\\Notifications\\\\OrderStatusChangedNotification\",\n            \"notifiable_type\": \"App\\\\Models\\\\User\",\n            \"notifiable_id\": 1,\n            \"data\": {\n                \"order_id\": 1,\n                \"previous_status\": \"pending\",\n                \"new_status\": \"confirmed\",\n                \"message\": \"Your order #1 status has been updated from pending to confirmed.\"\n            },\n            \"read_at\": null,\n            \"created_at\": \"2026-07-30T11:15:00.000000Z\",\n            \"updated_at\": \"2026-07-30T11:15:00.000000Z\"\n        },\n        {\n            \"id\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n            \"type\": \"App\\\\Notifications\\\\ProductBackInStockNotification\",\n            \"notifiable_type\": \"App\\\\Models\\\\User\",\n            \"notifiable_id\": 1,\n            \"data\": {\n                \"product_id\": 3,\n                \"product_title\": \"USB-C Hub Adapter\",\n                \"message\": \"The product \\\"USB-C Hub Adapter\\\" is back in stock!\"\n            },\n            \"read_at\": \"2026-07-30T12:00:00.000000Z\",\n            \"created_at\": \"2026-07-30T11:30:00.000000Z\",\n            \"updated_at\": \"2026-07-30T12:00:00.000000Z\"\n        }\n    ],\n    \"meta\": {\n        \"current_page\": 1,\n        \"from\": 1,\n        \"to\": 2,\n        \"total\": 2,\n        \"per_page\": 20,\n        \"last_page\": 1\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Mark Notification as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/notifications/{{notification_id}}/read",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", "{{notification_id}}", "read"]
+            },
+            "description": "Mark a single notification as read. The notification must belong to the authenticated user (403 otherwise)."
+          },
+          "response": [
+            {
+              "name": "Success (200)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Notification marked as read.\"\n}"
+            },
+            {
+              "name": "Forbidden (403)",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"message\": \"Forbidden.\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
