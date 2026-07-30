@@ -2,9 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\InsufficientStockException;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\OrderService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class OrderTest extends TestCase
@@ -51,7 +55,6 @@ class OrderTest extends TestCase
         ]);
     }
 
-    
     public function test_order_with_multiple_products_is_created_correctly(): void
     {
         $token = $this->userToken();
@@ -193,7 +196,6 @@ class OrderTest extends TestCase
         $this->assertEquals(5, $product->fresh()->stock);
     }
 
-
     public function test_order_totals_are_calculated_correctly(): void
     {
         $token = $this->userToken();
@@ -224,7 +226,6 @@ class OrderTest extends TestCase
         $response->assertStatus(401);
     }
 
-
     public function test_duplicate_products_are_not_allowed(): void
     {
         $token = $this->userToken();
@@ -240,4 +241,77 @@ class OrderTest extends TestCase
 
         $response->assertStatus(422);
     }
+
+    public function test_lock_for_update_is_used_to_prevent_race_conditions(): void
+    {
+        $product = Product::factory()->create(['stock' => 5, 'price' => 10]);
+        $token = $this->userToken();
+
+        $queries = [];
+        DB::listen(function ($q) use (&$queries) {
+            $queries[] = $q->sql;
+        });
+
+        $this->withHeader('Authorization', "Bearer $token")
+            ->postJson('/api/orders', [
+                'items' => [['product_id' => $product->id, 'quantity' => 1]],
+            ]);
+
+        $hasForUpdate = collect($queries)->contains(
+            fn ($sql) => str_contains(strtolower($sql), 'for update')
+        );
+
+        $this->assertTrue($hasForUpdate);
+    }
+
+    public function test_transaction_rolls_back_when_midway_product_has_insufficient_stock(): void
+    {
+        $token = $this->userToken();
+        $product1 = Product::factory()->create(['stock' => 5, 'price' => 10.00]);
+        $product2 = Product::factory()->create(['stock' => 1, 'price' => 20.00]);
+
+        $response = $this->withHeader('Authorization', "Bearer $token")
+            ->postJson('/api/orders', [
+                'items' => [
+                    ['product_id' => $product1->id, 'quantity' => 2],
+                    ['product_id' => $product2->id, 'quantity' => 5],
+                ],
+            ]);
+
+        $response->assertStatus(409);
+
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('order_items', 0);
+        $this->assertEquals(5, $product1->fresh()->stock);
+        $this->assertEquals(1, $product2->fresh()->stock);
+    }
+
+
+    public function test_concurrent_order_attempts_do_not_oversell_inventory(): void
+    {
+        $token = $this->userToken();
+        $product = Product::factory()->create(['stock' => 2, 'price' => 10.00]);
+
+        $response1 = $this->withHeader('Authorization', "Bearer $token")
+            ->postJson('/api/orders', [
+                'items' => [
+                    ['product_id' => $product->id, 'quantity' => 2],
+                ],
+            ]);
+
+        $response1->assertStatus(201);
+        $this->assertEquals(0, $product->fresh()->stock);
+
+        $response2 = $this->withHeader('Authorization', "Bearer $token")
+            ->postJson('/api/orders', [
+                'items' => [
+                    ['product_id' => $product->id, 'quantity' => 1],
+                ],
+            ]);
+
+        $response2->assertStatus(409);
+        $this->assertEquals(0, $product->fresh()->stock);
+    }
+
+
 }
