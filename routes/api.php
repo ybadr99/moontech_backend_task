@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminProductController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PhoneVerificationController;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +19,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/phone/verify', [PhoneVerificationController::class, 'verify']);
+    Route::post('/orders', [OrderController::class, 'store']);
 });
 
 Route::post('/phone/resend', [PhoneVerificationController::class, 'resend'])
