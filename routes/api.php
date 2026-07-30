@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminProductController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PhoneVerificationController;
@@ -22,6 +23,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/phone/verify', [PhoneVerificationController::class, 'verify']);
     Route::get('/orders', [OrderController::class, 'index']);
     Route::post('/orders', [OrderController::class, 'store']);
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read']);
 });
 
 Route::post('/phone/resend', [PhoneVerificationController::class, 'resend'])

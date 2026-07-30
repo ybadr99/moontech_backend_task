@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\Product;
 use App\Models\User;
+use App\Notifications\NewProductNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -290,5 +292,35 @@ class ProductManagementTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonPath('data.title', 'Single Product');
+    }
+
+    public function test_new_product_notifies_all_regular_users(): void
+    {
+        Notification::fake();
+
+        $regularUsers = User::factory()->count(3)->create(['role' => 'user']);
+
+        $admin = User::factory()->admin()->create();
+        $token = $admin->createToken('admin-token')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer $token")
+            ->postJson('/api/admin/products', [
+                'title' => 'Notify Test Product',
+                'description' => 'Testing notifications',
+                'price' => 9.99,
+                'stock' => 10,
+            ]);
+
+        $response->assertStatus(201);
+
+        foreach ($regularUsers as $user) {
+            Notification::assertSentTo(
+                $user,
+                NewProductNotification::class,
+                function (NewProductNotification $notification, array $channels) {
+                    return $notification->product->title === 'Notify Test Product';
+                },
+            );
+        }
     }
 }
