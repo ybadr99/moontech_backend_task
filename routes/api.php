@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminProductController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\OrderController;
@@ -19,6 +20,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/phone/verify', [PhoneVerificationController::class, 'verify']);
+    Route::get('/orders', [OrderController::class, 'index']);
     Route::post('/orders', [OrderController::class, 'store']);
 });
 
@@ -27,4 +29,5 @@ Route::post('/phone/resend', [PhoneVerificationController::class, 'resend'])
 
 Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
     Route::apiResource('products', AdminProductController::class);
+    Route::get('/orders', [AdminOrderController::class, 'index']);
 });
