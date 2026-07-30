@@ -30,4 +30,5 @@ Route::post('/phone/resend', [PhoneVerificationController::class, 'resend'])
 Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
     Route::apiResource('products', AdminProductController::class);
     Route::get('/orders', [AdminOrderController::class, 'index']);
+    Route::patch('/orders/{order}/status', [AdminOrderController::class, 'updateStatus']);
 });
