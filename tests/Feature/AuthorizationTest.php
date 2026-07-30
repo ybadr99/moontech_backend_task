@@ -37,20 +37,21 @@ class AuthorizationTest extends TestCase
     {
         $response = $this->getJson('/api/admin/products');
 
-        $response->assertStatus(401);
+        $response->assertStatus(401)
+            ->assertExactJson(['message' => 'Unauthenticated.']);
     }
 
     public function test_users_are_assigned_correct_role_on_registration(): void
     {
         $this->postJson('/api/register', [
             'name' => 'Role Test',
-            'phone' => '1112223333',
+            'phone' => '01012345678',
             'password' => 'password123',
             'password_confirmation' => 'password123',
         ]);
 
         $this->assertDatabaseHas('users', [
-            'phone' => '1112223333',
+            'phone' => '01012345678',
             'role' => 'user',
         ]);
     }
